@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36811.4
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AdvancedNitroSystem", "AdvancedNitroSystem\AdvancedNitroSystem.vcxproj", "{4C3F8761-B8A0-646F-410E-AB21AD6E9B2E}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ProperBikeNitro", "ProperBikeNitro\ProperBikeNitro.vcxproj", "{842B0C4E-F0B6-7912-F9C7-FC0665D2D512}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x86 = Debug|x86
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4C3F8761-B8A0-646F-410E-AB21AD6E9B2E}.Debug|x86.ActiveCfg = Debug|Win32
+		{4C3F8761-B8A0-646F-410E-AB21AD6E9B2E}.Debug|x86.Build.0 = Debug|Win32
+		{4C3F8761-B8A0-646F-410E-AB21AD6E9B2E}.Release|x86.ActiveCfg = Release|Win32
+		{4C3F8761-B8A0-646F-410E-AB21AD6E9B2E}.Release|x86.Build.0 = Release|Win32
+		{842B0C4E-F0B6-7912-F9C7-FC0665D2D512}.Debug|x86.ActiveCfg = Debug|Win32
+		{842B0C4E-F0B6-7912-F9C7-FC0665D2D512}.Debug|x86.Build.0 = Debug|Win32
+		{842B0C4E-F0B6-7912-F9C7-FC0665D2D512}.Release|x86.ActiveCfg = Release|Win32
+		{842B0C4E-F0B6-7912-F9C7-FC0665D2D512}.Release|x86.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {AE328699-1652-4B21-9B99-7B2CDC843CCD}
+	EndGlobalSection
+EndGlobal
