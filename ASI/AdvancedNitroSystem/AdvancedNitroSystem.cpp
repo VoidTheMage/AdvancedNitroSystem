@@ -34,6 +34,21 @@ float scaleY;
 float posX;
 float posY;
 
+static ThiscallEvent <AddressList<0x6D31E3, H_CALL>, PRIORITY_BEFORE, ArgPick2N<CAutomobile*, 0, char, 1>, void(CAutomobile*, char)> NitrousControl;
+
+void NitrousControlHook(CAutomobile* x, char setBoosts);
+void __fastcall NitrousControlHookNPCFix(CAutomobile* x, void* edx, char setBoosts);
+int __fastcall GetUpgradeHook(CVehicle* veh, void* edx, int type);
+void DrawProgressBarOnScreen(float x, float y, float width, float height, float progress, CRGBA const& color);
+void DrawProgressBar();
+bool IsRadarVisible();
+void PatchVehFireButtonGInput();
+void CheckReloadNos();
+void __cdecl NitroCheatAndTaxiHandler(CAutomobile* automobile);
+void NitroCheatAndTaxiHandler_thunk();
+void LoadIniValues();
+int Ret0();
+
 extern "C"
 {
     __declspec(dllexport) int GetNitroValue()
@@ -60,22 +75,12 @@ extern "C"
     {
         refillNosAddress = value;
     }
+
+    __declspec(dllexport) int IsRadarVisibleNoBlink()
+    {
+        return IsRadarVisible();
+    }
 }
-
-static ThiscallEvent <AddressList<0x6D31E3, H_CALL>, PRIORITY_BEFORE, ArgPick2N<CAutomobile*, 0, char, 1>, void(CAutomobile*, char)> NitrousControl;
-
-void NitrousControlHook(CAutomobile* x, char setBoosts);
-void __fastcall NitrousControlHookNPCFix(CAutomobile* x, void* edx, char setBoosts);
-int __fastcall GetUpgradeHook(CVehicle* veh, void* edx, int type);
-void DrawProgressBarOnScreen(float x, float y, float width, float height, float progress, CRGBA const& color);
-void DrawProgressBar();
-bool IsRadarVisible();
-void PatchVehFireButtonGInput();
-void CheckReloadNos();
-void __cdecl NitroCheatAndTaxiHandler(CAutomobile* automobile);
-void NitroCheatAndTaxiHandler_thunk();
-void LoadIniValues();
-int Ret0();
 
 void NitrousControlHook(CAutomobile* x, char setBoosts)
 {
@@ -284,7 +289,7 @@ bool IsRadarVisible()
         && CEntryExitManager::ms_exitEnterState != 2
         && !CHud::bScriptDontDisplayRadar
         && FrontEndMenuManager.m_nPrefsRadarMode != 2
-        && (CHud::m_ItemToFlash != 8 || CTimer::m_FrameCounter & 8)
+        //&& (CHud::m_ItemToFlash != 8 || CTimer::m_FrameCounter & 8) //Blink radar
         && CReplay::Mode != 1
         && !CWeapon::ms_bTakePhoto
         && (*(unsigned int*)0xB6EC40 != CTimer::m_FrameCounter);
@@ -411,7 +416,7 @@ public:
         patch::Nop(0x6A3FB9, 2); //Disable nitro amount decrease
 
         patch::Nop(0x6B199C, 6); //Allows NPCS taxis to get nitro
-
+        
         patch::Nop(0x6B19CC, 6);
         patch::Nop(0x6B19D2, 7);
         injector::MakeCALL(0x6B19CC, NitroCheatAndTaxiHandler_thunk, true);

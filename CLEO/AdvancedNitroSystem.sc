@@ -4,46 +4,61 @@ NOP
 
 SCRIPT_NAME ANSYSTE
 
-LVAR_INT child lastVeh scplayer this veh mod texture drawHUD drawNosIcon iTemp0 iTemp1 fontR fontG fontB iconR iconG iconB settings nitrousControlHook alignment
+LVAR_INT child lastVeh scplayer veh mod texture drawHUD drawNosIcon iTemp0 iTemp1 fontR fontG fontB iconR iconG iconB settings nitrousControlHook alignment ansASI log
 
 LVAR_FLOAT fTemp0 fTemp1 offsetX offsetY offsetXNR offsetYNR iconOffsetX iconOffsetY currentNos
 
 LVAR_TEXT_LABEL string
 
 GET_LABEL_POINTER Settings settings
-GET_THIS_SCRIPT_STRUCT this
 GET_PLAYER_CHAR 0 scplayer
 
-READ_INT_FROM_INI_FILE "cleo/AdvancedNitroSystem.ini" "configs" "DisableOnSAMP" iTemp0
+OPEN_FILE "cleo/AdvancedNitroSystem.log" 119 log
+WRITE_FORMATTED_STRING_TO_FILE log "Advanced Nitro System V3.1 by Void the Mage%c" 10
+
 IF IS_ON_SAMP
-AND iTemp0 = TRUE
-    TERMINATE_THIS_CUSTOM_SCRIPT
+    WRITE_FORMATTED_STRING_TO_FILE log "SAMP detected%c" 10
+    READ_INT_FROM_INI_FILE "cleo/AdvancedNitroSystem.ini" "configs" "DisableOnSAMP" iTemp0
+    IF iTemp0 = TRUE
+        WRITE_FORMATTED_STRING_TO_FILE log "Terminating this script%c" 10
+        TERMINATE_THIS_CUSTOM_SCRIPT
+    ENDIF
 ENDIF
 
 GOSUB ReadMainSettings
 GOSUB ReadHUDSettings
 
+IF LOAD_DYNAMIC_LIBRARY "AdvancedNitroSystemSA.asi" ansASI
+    WRITE_FORMATTED_STRING_TO_FILE log "Success to load AdvancedNitroSystemSA.asi%c" 10
+ELSE
+    PRINT_STRING_NOW "Failed to load AdvancedNitroSystemSA.asi" 5000
+    WRITE_FORMATTED_STRING_TO_FILE log "Failed to load AdvancedNitroSystemSA.asi%c" 10
+    WRITE_FORMATTED_STRING_TO_FILE log "Terminating this script%c" 10
+    TERMINATE_THIS_CUSTOM_SCRIPT
+ENDIF
+
+IF LOAD_DYNAMIC_LIBRARY "ProperBikeNitroSA.asi" iTemp0
+    WRITE_FORMATTED_STRING_TO_FILE log "Success to load ProperBikeNitroSA.asi%c" 10
+ELSE
+    WRITE_FORMATTED_STRING_TO_FILE log "Failed to load ProperBikeNitroSA.asi%c" 10
+ENDIF
+
 READ_STRUCT_OFFSET settings 36 4 iTemp0 //ConsumableMode
 IF iTemp0 = TRUE
     GET_VAR_POINTER nitrousControlHook iTemp1
-    IF LOAD_DYNAMIC_LIBRARY "AdvancedNitroSystemSA.asi" iTemp0
-        GET_DYNAMIC_LIBRARY_PROCEDURE "Subscribe" iTemp0 iTemp0
-        CALL_FUNCTION iTemp0 1 1 iTemp1
-    ENDIF
+    GET_DYNAMIC_LIBRARY_PROCEDURE "Subscribe" ansASI iTemp0
+    CALL_FUNCTION iTemp0 1 1 iTemp1
 ENDIF
 
 main_loop:
-IF LOAD_DYNAMIC_LIBRARY "AdvancedNitroSystemSA.asi" iTemp0
-    GET_DYNAMIC_LIBRARY_PROCEDURE "SetNitroValue" iTemp0 iTemp1
-    CALL_FUNCTION iTemp1 1 1 0
-ENDIF
+GET_DYNAMIC_LIBRARY_PROCEDURE "SetNitroValue" ansASI iTemp0
+CALL_FUNCTION iTemp0 1 1 0
 
 IF TEST_CHEAT RELOADNOSHUD
     GOSUB ReadHUDSettings
-    IF LOAD_DYNAMIC_LIBRARY "AdvancedNitroSystemSA.asi" iTemp0
-        GET_DYNAMIC_LIBRARY_PROCEDURE "ReloadNos" iTemp0 iTemp1
-        CALL_FUNCTION iTemp1 0 0
-    ENDIF
+
+    GET_DYNAMIC_LIBRARY_PROCEDURE "ReloadNos" ansASI iTemp0
+    CALL_FUNCTION iTemp0 0 0
     PRINT_STRING_NOW "Advanced Nitro System HUD Reloaded" 2000
 ENDIF
 
@@ -64,10 +79,8 @@ IF IS_CHAR_SITTING_IN_ANY_CAR scplayer
                     GET_SCRIPT_VAR child 3 currentNos
                     CLAMP_FLOAT currentNos 0.0 1.0 currentNos
 
-                    IF LOAD_DYNAMIC_LIBRARY "AdvancedNitroSystemSA.asi" iTemp0
-                        GET_DYNAMIC_LIBRARY_PROCEDURE "SetNitroValue" iTemp0 iTemp1
-                        CALL_FUNCTION iTemp1 1 1 currentNos
-                    ENDIF
+                    GET_DYNAMIC_LIBRARY_PROCEDURE "SetNitroValue" ansASI iTemp0
+                    CALL_FUNCTION iTemp0 1 1 currentNos
 
                     IF drawHUD = TRUE
                     AND IS_HUD_VISIBLE
@@ -81,7 +94,8 @@ IF IS_CHAR_SITTING_IN_ANY_CAR scplayer
             ELSE
                 IF NOT mod = -1
                     lastVeh = veh
-                    STREAM_CUSTOM_SCRIPT NITROINSTANCE.CS this veh settings
+                    GET_THIS_SCRIPT_STRUCT iTemp0
+                    STREAM_CUSTOM_SCRIPT NITROINSTANCE.CS iTemp0 veh settings
                 ENDIF
             ENDIF
         ENDIF
@@ -92,13 +106,14 @@ WAIT 0
 GOTO main_loop
 
 DrawUI:
-IF LOAD_DYNAMIC_LIBRARY "AdvancedNitroSystemSA.asi" iTemp0
-    GET_DYNAMIC_LIBRARY_PROCEDURE "DrawBar" iTemp0 iTemp1
-    CALL_FUNCTION iTemp1 1 1 currentNos
-ENDIF
+GET_DYNAMIC_LIBRARY_PROCEDURE "DrawBar" ansASI iTemp0
+CALL_FUNCTION iTemp0 1 1 currentNos
 
 IF drawNosIcon = TRUE
-    IF IS_RADAR_VISIBLE
+    GET_DYNAMIC_LIBRARY_PROCEDURE "IsRadarVisibleNoBlink" ansASI iTemp0
+    CALL_FUNCTION_RETURN iTemp0 0 0 iTemp0
+
+    IF iTemp0 = TRUE
         fTemp0 = offsetX
         fTemp1 = offsetY
     ELSE
@@ -132,7 +147,10 @@ IF drawNosIcon = TRUE
     GET_FIXED_XY_ASPECT_RATIO fTemp0 fTemp1 fTemp0 fTemp1
     DRAW_STRING_EXT $string DRAW_EVENT_AFTER_HUD fTemp0 fTemp1 0.47 0.94 TRUE FONT_PRICEDOWN 0 alignment 0.0 2 fontR fontG fontB 255 2 0 0 0 0 255 0 0 0 0 0
 
-    IF IS_RADAR_VISIBLE
+    GET_DYNAMIC_LIBRARY_PROCEDURE "IsRadarVisibleNoBlink" ansASI iTemp0
+    CALL_FUNCTION_RETURN iTemp0 0 0 iTemp0
+
+    IF iTemp0 = TRUE
         fTemp0 = offsetX
         fTemp1 = offsetY
     ELSE
