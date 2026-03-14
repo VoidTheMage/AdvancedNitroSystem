@@ -1,12 +1,12 @@
-#include "plugin.h"
-#include "CStreaming.h"
-#include "CMessages.h"
+#include <plugin.h> // Plugin-SDK version 1002 from 2025-12-09 23:18:09
+#include <CStreaming.h>
+#include <CMessages.h>
+#include <CEntryExitManager.h>
+#include <CHud.h>
+#include <CMenuManager.h>
+#include <CReplay.h>
+#include <extensions/ScriptCommands.h>
 #include "../third_party/IniReader/IniReader.h"
-#include "CEntryExitManager.h"
-#include "CHud.h"
-#include "CMenuManager.h"
-#include "CReplay.h"
-#include "extensions/ScriptCommands.h"
 
 using namespace plugin;
 
@@ -34,10 +34,10 @@ float scaleY;
 float posX;
 float posY;
 
-static ThiscallEvent <AddressList<0x6D31E3, H_CALL>, PRIORITY_BEFORE, ArgPick2N<CAutomobile*, 0, char, 1>, void(CAutomobile*, char)> NitrousControl;
+ThiscallEvent <AddressList<0x6D31E3, H_CALL>, PRIORITY_BEFORE, ArgPick2N<CAutomobile*, 0, char, 1>, void(CAutomobile*, char)> NitrousControl;
 
-void NitrousControlHook(CAutomobile* x, char setBoosts);
-void __fastcall NitrousControlHookNPCFix(CAutomobile* x, void* edx, char setBoosts);
+void NitrousControlHook(CAutomobile* automobile, char setBoosts);
+void __fastcall NitrousControlHookNPCFix(CAutomobile* automobile, void* edx, char setBoosts);
 int __fastcall GetUpgradeHook(CVehicle* veh, void* edx, int type);
 void DrawProgressBarOnScreen(float x, float y, float width, float height, float progress, CRGBA const& color);
 void DrawProgressBar();
@@ -82,26 +82,26 @@ extern "C"
     }
 }
 
-void NitrousControlHook(CAutomobile* x, char setBoosts)
+void NitrousControlHook(CAutomobile* automobile, char setBoosts)
 {
-    if(refillNosAddress && x->m_pDriver == FindPlayerPed())
+    if(refillNosAddress && automobile->m_pDriver == FindPlayerPed())
     {
         patch::SetInt(refillNosAddress, 1);
     }
 }
 
-void __fastcall NitrousControlHookNPCFix(CAutomobile* x, void* edx, char setBoosts)
+void __fastcall NitrousControlHookNPCFix(CAutomobile* automobile, void* edx, char setBoosts)
 {
-    if(x->m_pDriver)
+    if(automobile->m_pDriver)
     {
-        if(x->m_pDriver->IsPlayer()) //Fixes NPCS using nitro
+        if(automobile->m_pDriver->IsPlayer()) //Fixes NPCS using nitro
         {
-            x->NitrousControl(setBoosts); //Don't affect bikes
+            automobile->NitrousControl(setBoosts); //Don't affect bikes
         }
     }
     else
     {
-        x->NitrousControl(setBoosts); //Don't affect bikes
+        automobile->NitrousControl(setBoosts); //Don't affect bikes
     }
 }
 
@@ -383,18 +383,17 @@ int Ret0()
     return 0;
 }
 
-class AdvancedNitroSystem
+struct Main
 {
-public:
-    AdvancedNitroSystem()
+    Main()
     {
         LoadIniValues();
         
         if(GetModuleHandleA("SAMP.dll") && disableOnSAMP) return;        
 
-        plugin::Events::drawHudEvent.after += DrawProgressBar;
-        plugin::Events::processScriptsEvent.after += PatchVehFireButtonGInput;
-        plugin::Events::processScriptsEvent.after += CheckReloadNos;
+        Events::drawHudEvent.after += DrawProgressBar;
+        Events::processScriptsEvent.after += PatchVehFireButtonGInput;
+        Events::processScriptsEvent.after += CheckReloadNos;
 
         patch::RedirectCall(0x478462, GetUpgradeHook); //Fixes the value returned by the command for vehicles without a nitro dummy
 
@@ -420,5 +419,5 @@ public:
         patch::Nop(0x6B19CC, 6);
         patch::Nop(0x6B19D2, 7);
         injector::MakeCALL(0x6B19CC, NitroCheatAndTaxiHandler_thunk, true);
-	};
-} AdvancedNitroSystemPlugin;
+	}
+} gInstance;

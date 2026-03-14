@@ -4,17 +4,15 @@ NOP
 
 SCRIPT_NAME ANSYSTE
 
-LVAR_INT child lastVeh scplayer veh mod texture drawHUD drawNosIcon iTemp0 iTemp1 fontR fontG fontB iconR iconG iconB settings nitrousControlHook alignment ansASI log
+LVAR_INT child lastVeh scplayer veh mod texture iTemp0 iTemp1 fontR fontG fontB iconR iconG iconB settings nitrousControlHook alignment ansASI log
 
-LVAR_FLOAT fTemp0 fTemp1 offsetX offsetY offsetXNR offsetYNR iconOffsetX iconOffsetY currentNos
-
-LVAR_TEXT_LABEL string
+LVAR_FLOAT fTemp0 fTemp1 fTemp2 fTemp3 offsetX offsetY offsetXNR offsetYNR iconOffsetX iconOffsetY currentNos
 
 GET_LABEL_POINTER Settings settings
 GET_PLAYER_CHAR 0 scplayer
 
 OPEN_FILE "cleo/AdvancedNitroSystem.log" 119 log
-WRITE_FORMATTED_STRING_TO_FILE log "Advanced Nitro System V3.1 by Void the Mage%c" 10
+WRITE_FORMATTED_STRING_TO_FILE log "Advanced Nitro System V3.2 by Void the Mage%c" 10
 
 IF IS_ON_SAMP
     WRITE_FORMATTED_STRING_TO_FILE log "SAMP detected%c" 10
@@ -82,7 +80,9 @@ IF IS_CHAR_SITTING_IN_ANY_CAR scplayer
                     GET_DYNAMIC_LIBRARY_PROCEDURE "SetNitroValue" ansASI iTemp0
                     CALL_FUNCTION iTemp0 1 1 currentNos
 
-                    IF drawHUD = TRUE
+                    READ_STRUCT_OFFSET settings 64 4 iTemp0
+
+                    IF iTemp0 = TRUE //drawNosHud
                     AND IS_HUD_VISIBLE
                     AND IS_PLAYER_CONTROL_ON 0
                     AND IS_PLAYER_PLAYING 0
@@ -109,7 +109,9 @@ DrawUI:
 GET_DYNAMIC_LIBRARY_PROCEDURE "DrawBar" ansASI iTemp0
 CALL_FUNCTION iTemp0 1 1 currentNos
 
-IF drawNosIcon = TRUE
+READ_STRUCT_OFFSET settings 68 4 iTemp0
+
+IF iTemp0 = TRUE //drawNosIcon
     GET_DYNAMIC_LIBRARY_PROCEDURE "IsRadarVisibleNoBlink" ansASI iTemp0
     CALL_FUNCTION_RETURN iTemp0 0 0 iTemp0
 
@@ -120,32 +122,34 @@ IF drawNosIcon = TRUE
         fTemp0 = offsetXNR
         fTemp1 = offsetYNR
     ENDIF
+
+    GET_LABEL_POINTER Buffer iTemp1
     
     READ_STRUCT_OFFSET settings 36 4 iTemp0 //ConsumableMode
     IF iTemp0 = FALSE
         SWITCH mod
             CASE 1009
-                STRING_FORMAT string "2"
+                STRING_FORMAT iTemp1 "2"
             BREAK
             CASE 1008
-                STRING_FORMAT string "5"
+                STRING_FORMAT iTemp1 "5"
             BREAK
             CASE 1010
-                STRING_FORMAT string "10"
+                STRING_FORMAT iTemp1 "10"
             BREAK
             DEFAULT
-                STRING_FORMAT string "10"
+                STRING_FORMAT iTemp1 "10"
             BREAK
         ENDSWITCH
     ELSE
         GET_VEHICLE_POINTER veh iTemp0
         READ_STRUCT_OFFSET iTemp0 0x48A 1 iTemp0 //Nos amount
 
-        STRING_FORMAT string "%d" iTemp0
+        STRING_FORMAT iTemp1 "%d" iTemp0
     ENDIF
 
     GET_FIXED_XY_ASPECT_RATIO fTemp0 fTemp1 fTemp0 fTemp1
-    DRAW_STRING_EXT $string DRAW_EVENT_AFTER_HUD fTemp0 fTemp1 0.47 0.94 TRUE FONT_PRICEDOWN 0 alignment 0.0 2 fontR fontG fontB 255 2 0 0 0 0 255 0 0 0 0 0
+    DRAW_STRING_EXT $iTemp1 DRAW_EVENT_AFTER_HUD fTemp0 fTemp1 0.47 0.94 TRUE FONT_PRICEDOWN 0 alignment 0.0 2 fontR fontG fontB 255 2 0 0 0 0 255 0 0 0 0 0
 
     GET_DYNAMIC_LIBRARY_PROCEDURE "IsRadarVisibleNoBlink" ansASI iTemp0
     CALL_FUNCTION_RETURN iTemp0 0 0 iTemp0
@@ -302,6 +306,12 @@ READ_FLOAT_FROM_INI_FILE "cleo/AdvancedNitroSystem.ini" "configs" "IconOffsetX" 
 READ_FLOAT_FROM_INI_FILE "cleo/AdvancedNitroSystem.ini" "configs" "IconOffsetY" iconOffsetY
 READ_INT_FROM_INI_FILE "cleo/AdvancedNitroSystem.ini" "configs" "IconAlignment" alignment
 
+READ_INT_FROM_INI_FILE "cleo/AdvancedNitroSystem.ini" "configs" "DrawHUD" iTemp0
+WRITE_STRUCT_OFFSET settings 64 4 iTemp0
+
+READ_INT_FROM_INI_FILE "cleo/AdvancedNitroSystem.ini" "configs" "DrawNosIcon" iTemp0
+WRITE_STRUCT_OFFSET settings 68 4 iTemp0
+
 offsetX += iconOffsetX
 offsetX /= 1920.0
 offsetX *= 640.0
@@ -316,8 +326,6 @@ offsetYNR += iconOffsetY
 offsetYNR /= 1080.0
 offsetYNR *= 448.0
 
-READ_INT_FROM_INI_FILE "cleo/AdvancedNitroSystem.ini", "configs", "DrawHUD") drawHUD
-READ_INT_FROM_INI_FILE "cleo/AdvancedNitroSystem.ini", "configs", "DrawNosIcon") drawNosIcon
 LOAD_TEXTURE_DICTIONARY ansyste
 LOAD_SPRITE 1 NOSICO
 LOAD_SPRITE 2 NOSICOBG
@@ -345,4 +353,18 @@ DUMP
 00 00 00 00 //disableIfLookingSidewaysKBM
 00 00 00 00 //toggleNosKey
 00 00 00 00 //purgeKey
+00 00 00 00 //drawHud
+00 00 00 00 //drawNosIcon
+ENDDUMP
+
+Buffer:
+DUMP
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00 //32 bytes
 ENDDUMP

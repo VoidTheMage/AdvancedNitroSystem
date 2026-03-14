@@ -1,26 +1,29 @@
-#include "plugin.h"
-#include "CMessages.h"
-#include "CBike.h"
-#include "CModelInfo.h"
-#include "FxManager_c.h"
+#include <plugin.h> // Plugin-SDK version 1002 from 2025-12-09 23:18:09
+#include <CMessages.h>
+#include <CBike.h>
+#include <CModelInfo.h>
+#include <FxManager_c.h>
+#include <CStreaming.h>
 #include "../third_party/IniReader/IniReader.h"
-#include "CStreaming.h"
 
 using namespace plugin;
 
 bool disableOnSAMP;
 bool useBikeNitro;
-bool consumableMode;
 
-static ThiscallEvent <AddressList<0x6B8953, H_CALL>, PRIORITY_BEFORE, ArgPickN<CBike*, 0>, void(CBike*)> CBikeDestructor;
+ThiscallEvent <AddressList<0x6B8953, H_CALL>, PRIORITY_BEFORE, ArgPickN<CBike*, 0>, void(CBike*)> CBikeDestructor;
+ThiscallEvent <AddressList<0x6B9271, H_CALL>, PRIORITY_BEFORE, ArgPickN<CVehicle*, 0>, void(CVehicle*)> GetColModel;
+ThiscallEvent <AddressList<0x6B9B3B, H_CALL>, PRIORITY_BEFORE, ArgPickN<CPhysical*, 0>, void(CPhysical*)> SkipPhysics;
+ThiscallEvent <AddressList<0x501F9B, H_CALL>, PRIORITY_BEFORE, ArgPick2N<CAEVehicleAudioEntity*, 0, cVehicleParams*, 1>, void(CAEVehicleAudioEntity*, cVehicleParams*)> ProcessVehicleRoadNoise;
+ThiscallEvent <AddressList<0x6BF768, H_CALL>, PRIORITY_BEFORE, ArgPickN<CBike*, 0>, void(CBike*)> SetupSuspensionLines;
 
 void NitroCheatHandler(CAutomobile* automobile);
-CColModel* __fastcall GetColModelHook(CEntity* _this, void* edx);
-void __fastcall SkipPhysicsHook(CPhysical* _this, void* edx);
+void GetColModelHook(CEntity* _this);
+void SkipPhysicsHook(CPhysical* _this);
 float __fastcall CalculateDriveAccelerationHook(cTransmission* _this, void* edx, float* pGasPedal, unsigned __int8* pbCurrentGear, float* pGearChangeCount, float* pSpeed, float* a6, float* a7, char bAllWheelsOnGround, char handlingType);
-void __fastcall ProcessVehicleRoadNoiseHook(CAEVehicleAudioEntity* _this, void* edx, cVehicleParams* a2);
+void ProcessVehicleRoadNoiseHook(CAEVehicleAudioEntity* _this, cVehicleParams* a2);
 void SetupBikeCarmods(CBike* bike);
-void __fastcall SetupSuspensionLinesHook(CBike* _this, void* edx);
+void SetupSuspensionLinesHook(CBike* _this);
 void CBikeDestructorHook(CBike* _this);
 bool GetWaterLevel(float x, float y, float z, float* pWaterZ, bool bForceResult, CVector* pNormal);
 CVector TransformPoint(CMatrix* mat, CVector pos);
@@ -32,6 +35,7 @@ void AllowBikesToAddNitro_thunk();
 void AllowBikesToRemoveNitro_thunk();
 void LoadIniValues();
 void AddCBikeProcessControlHooks();
+void FixDesync(CVehicle* veh);
 
 void NitroCheatHandler(CAutomobile* automobile)
 {
@@ -45,11 +49,11 @@ void NitroCheatHandler(CAutomobile* automobile)
 	}
 }
 
-CColModel* __fastcall GetColModelHook(CEntity* _this, void* edx)
+void GetColModelHook(CEntity* _this)
 {
 	CAutomobile* automobile = reinterpret_cast<CAutomobile*>(_this);
 
-	if(automobile->m_nVehicleSubClass != 9) return _this->GetColModel();
+	if(automobile->m_nVehicleSubClass != 9) return;
 
 	DWORD flags = *(DWORD*)((uintptr_t)automobile + 0x38C);
 
@@ -90,19 +94,15 @@ CColModel* __fastcall GetColModelHook(CEntity* _this, void* edx)
 			automobile->pNitroParticle[1] = 0;
 		}
 	}
-
-	return _this->GetColModel();
 }
 
-void __fastcall SkipPhysicsHook(CPhysical* _this, void* edx)
+void SkipPhysicsHook(CPhysical* _this)
 {
 	CAutomobile* automobile = reinterpret_cast<CAutomobile*>(_this);
 
-	if(automobile->m_nVehicleSubClass != 9) return _this->SkipPhysics();
+	if(automobile->m_nVehicleSubClass != 9) return;
 
 	automobile->m_fNitroValue = 1.0;
-
-	_this->SkipPhysics();
 }
 
 float __fastcall CalculateDriveAccelerationHook(cTransmission* _this, void* edx, float* pGasPedal, unsigned __int8* pbCurrentGear, float* pGearChangeCount, float* pSpeed, float* a6, float* a7, char bAllWheelsOnGround, char handlingType)
@@ -120,10 +120,9 @@ float __fastcall CalculateDriveAccelerationHook(cTransmission* _this, void* edx,
 	return _this->CalculateDriveAcceleration(*pGasPedal, *pbCurrentGear, *pGearChangeCount, *pSpeed, *a6, *a7, bAllWheelsOnGround, handlingType);
 }
 
-void __fastcall ProcessVehicleRoadNoiseHook(CAEVehicleAudioEntity* _this, void* edx, cVehicleParams* a2)
+void ProcessVehicleRoadNoiseHook(CAEVehicleAudioEntity* _this, cVehicleParams* a2)
 {
 	plugin::CallMethod<0x4FB070, CAEVehicleAudioEntity*, cVehicleParams*>(_this, a2); //ProcessNitro
-	plugin::CallMethod<0x4F8B00, CAEVehicleAudioEntity*, cVehicleParams*>(_this, a2); //ProcessVehicleRoadNoise
 }
 
 void SetupBikeCarmods(CBike* bike)
@@ -174,18 +173,16 @@ void SetupBikeCarmods(CBike* bike)
 	}
 }
 
-void __fastcall SetupSuspensionLinesHook(CBike* _this, void* edx)
+void SetupSuspensionLinesHook(CBike* _this)
 {
 	CAutomobile* automobile = reinterpret_cast<CAutomobile*>(_this);
 
-	if(automobile->m_nVehicleSubClass != 9) return _this->SetupSuspensionLines();
+	if(automobile->m_nVehicleSubClass != 9) return;
 
 	automobile->m_fNitroValue = 1.0f;
 
 	automobile->pNitroParticle[0] = 0;
 	automobile->pNitroParticle[1] = 0;
-
-	_this->SetupSuspensionLines();
 
 	if(useBikeNitro)
 	{
@@ -261,7 +258,7 @@ void __fastcall DoNitroEffectHook(CAutomobile* automobile, float power)
 		}
 	}
 
-	if(physical->m_nPhysicalFlags.bTouchingWater)
+	if(physical->bTouchingWater)
 	{
 		CVector point = TransformPoint(&leanMat, firstExhaustPos);
 
@@ -286,7 +283,7 @@ void __fastcall DoNitroEffectHook(CAutomobile* automobile, float power)
 			secondExhaustPos.x *= -1.0f;
 		}
 
-		if(physical->m_nPhysicalFlags.bTouchingWater)
+		if(physical->bTouchingWater)
 		{
 			CVector point = TransformPoint(&leanMat, secondExhaustPos);
 
@@ -318,7 +315,8 @@ void __fastcall DoNitroEffectHook(CAutomobile* automobile, float power)
 	}
 	else if(!firstExhaustUnderWater && rwMatrix)
 	{
-		firstExhaustFxSystem = g_fxMan.CreateFxSystem("nitro", &firstExhaustPos.ToRwV3d(), rwMatrix, true);
+		RwV3d pos = firstExhaustPos.ToRwV3d();
+		firstExhaustFxSystem = g_fxMan.CreateFxSystem((char*)"nitro", &pos, rwMatrix, true);
 		automobile->pNitroParticle[0] = firstExhaustFxSystem;
 		if(firstExhaustFxSystem)
 		{
@@ -344,7 +342,8 @@ void __fastcall DoNitroEffectHook(CAutomobile* automobile, float power)
 		}
 		else if(!firstExhaustUnderWater && rwMatrix)
 		{
-			secondExhaustFxSystem = g_fxMan.CreateFxSystem("nitro", &secondExhaustPos.ToRwV3d(), rwMatrix, true);
+			RwV3d pos = secondExhaustPos.ToRwV3d();
+			secondExhaustFxSystem = g_fxMan.CreateFxSystem((char*)"nitro", &pos, rwMatrix, true);
 			automobile->pNitroParticle[1] = secondExhaustFxSystem;
 			if(secondExhaustFxSystem)
 			{
@@ -469,21 +468,32 @@ void LoadIniValues()
 	CIniReader ini("AdvancedNitroSystem.ini");
 	disableOnSAMP = ini.ReadInteger("configs", "DisableOnSAMP", 1);
 	useBikeNitro = ini.ReadInteger("ProperBikeNitro", "UseBikeNitro", 0);
-
-	consumableMode = ini.ReadInteger("configs", "ConsumableMode", 0); //If changed after first read can cause issues
 }
 
 void AddCBikeProcessControlHooks()
 {	
-	patch::RedirectCall(0x6B9271, GetColModelHook);
-	patch::RedirectCall(0x6B9B3B, SkipPhysicsHook);
-	patch::RedirectCall(0x6BA63D, CalculateDriveAccelerationHook); //Apply nitro acceleration on bikes	
+	GetColModel.before += [](CVehicle* x)
+	{
+		GetColModelHook(x);
+	};
+	SkipPhysics.before += [](CPhysical* x)
+	{
+		SkipPhysicsHook(x);
+	};
+	patch::RedirectCall(0x6BA63D, CalculateDriveAccelerationHook); //Apply nitro acceleration on bikes
 }
 
-class ProperBikeNitro
+void FixDesync(CVehicle* veh) //Fix problem with vehik
 {
-public:
-    ProperBikeNitro()
+	if(veh->m_nVehicleSubClass == 9)
+	{
+		veh->UpdateRwFrame();
+	}
+}
+
+struct Main
+{
+    Main()
 	{
 		LoadIniValues();
 
@@ -494,10 +504,22 @@ public:
 			CBikeDestructorHook(x); //Original destructor doesn't destroy nitro fx
 		};
 
+		Events::vehicleRenderEvent.before += [](CVehicle* x)
+		{
+			FixDesync(x);
+		};
+
 		AddCBikeProcessControlHooks(); //Implements code from CAutomobile::ProcessControl inside CBike::ProcessControl
 
-		patch::RedirectCall(0x501F9B, ProcessVehicleRoadNoiseHook); //Makes bikes process nitro sound
-		patch::RedirectCall(0x6BF768, SetupSuspensionLinesHook);
+		ProcessVehicleRoadNoise.before += [](CAEVehicleAudioEntity* x, cVehicleParams* a2)
+		{
+			ProcessVehicleRoadNoiseHook(x, a2); //Makes bikes process nitro sound
+		};
+
+		SetupSuspensionLines.before += [](CBike* x)
+		{
+			SetupSuspensionLinesHook(x);
+		};
 
 		patch::RedirectCall(0x4A2DC7, GetCompositeMatrixHook); //Fixes nitro fx position on bikes
 
@@ -512,5 +534,5 @@ public:
 
 		patch::Nop(0x6D32C8, 5);
 		injector::MakeJMP(0x6D32C8, &AllowBikesToRemoveNitro_thunk);
-	};
-} ProperBikeNitroPlugin;
+	}
+} gInstance;
